@@ -1,16 +1,14 @@
 /* 
  * main.c - The Binary Loader and Entry Point for Shimu Simulator
- * Updated: Direct logging to file with Bengali formatting.
+ * Updated: Integrated with modular Memory Management system.
  * Architect: Rahat Hasan | Akkhar Labs
  */
 
 #include "shimu.h"
 #include "cpu.h"
+#include "memory.h"
 #include "utils/formatting.h"
 #include <stdio.h>
-
-// ভার্চুয়াল মেমোরি (৬৫,৫৩৬ বাইট)
-uint8_t memory[MEMORY_SIZE];
 
 int main(int argc, char *argv[]) {
     printf("--- শিমু (Shimu) সিমুলেটর v১.০ ---\n");
@@ -22,14 +20,17 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // ২. বাইনারি (.ব) ফাইল ওপেন করা
+    // ২. মেমোরি এবং ওকোড ব্যবস্থা প্রস্তুত করা
+    init_memory();
+
+    // ৩. বাইনারি (.ব) ফাইল ওপেন করা
     FILE *file = fopen(argv[1], "rb");
     if (!file) {
         printf("ভুল: ফাইলটি খোলা সম্ভব হয়নি! পাথ চেক করুন।\n");
         return 1;
     }
 
-    // ৩. আউটপুট লগ ফাইল ওপেন করা
+    // ৪. আউটপুট লগ ফাইল ওপেন করা
     FILE *log_file = fopen("সিমুলেটর_ফলাফল.txt", "w");
     if (!log_file) {
         printf("ভুল: আউটপুট লগ ফাইল তৈরি করা যায়নি।\n");
@@ -37,8 +38,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // ৪. ফাইল থেকে মেমোরিতে র-বাইনারি লোড করা
-    size_t bytes_read = fread(memory, 1, MEMORY_SIZE, file);
+    // ৫. ফাইল থেকে ভার্চুয়াল মেমোরিতে র-বাইনারি লোড করা
+    // সরাসরি মেমোরি মডিউলের ইন্টারনাল বাফারে রিড করা হচ্ছে
+    size_t bytes_read = fread(get_memory_ptr(), 1, MEMORY_SIZE, file);
     printf("সিস্টেম: %zu বাইট মেমোরিতে লোড করা হয়েছে।\n", bytes_read);
     fclose(file);
 
@@ -46,16 +48,16 @@ int main(int argc, char *argv[]) {
     fprintf(log_file, "--- নির্দেশিকা-১৬ সিমুলেশন রিপোর্ট ---\n");
     fprintf(log_file, "আর্কিটেক্ট: রাহাত হাসান | অক্ষর ল্যাবস\n\n");
 
-    // ৫. সিপিইউ রিসেট এবং শুরু করা
+    // ৬. সিপিইউ রিসেট এবং শুরু করা
     CPU cpu;
     init_cpu(&cpu);
 
     printf("সিস্টেম: এক্সিকিউশন শুরু হচ্ছে... ফলাফল 'সিমুলেটর_ফলাফল.txt' ফাইলে দেখুন।\n");
     
-    // ৬. সিমুলেশন লুপ (Fetch-Decode-Execute Cycle)
+    // ৭. সিমুলেশন লুপ (Fetch-Decode-Execute Cycle)
     while (!cpu.is_halted) {
-        // সরাসরি লগে আউটপুট পাঠানো হচ্ছে
-        step_cpu(&cpu, memory, log_file);
+        // মেমোরি মডিউল এখন ইন্টারনালভাবে হ্যান্ডেল হবে
+        step_cpu(&cpu, log_file);
         
         if (cpu.pc >= MEMORY_SIZE) {
             fprintf(log_file, "\nভুল: মেমোরি আউট-অফ-বাউন্ড এরর!\n");
@@ -63,7 +65,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // ৭. চূড়ান্ত অবস্থা লগে দেখানো
+    // ৮. চূড়ান্ত অবস্থা লগে দেখানো
     fprintf(log_file, "\nসিস্টেম: এক্সিকিউশন সফলভাবে সম্পন্ন হয়েছে।\n");
     dump_cpu_state(&cpu, log_file);
 

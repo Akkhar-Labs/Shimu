@@ -1,10 +1,11 @@
 /* 
  * cpu.c - Implementation of the Nirdeshika-16 Core Engine
- * Updated: Stream-based output for Bengali formatting and file logging.
+ * Updated: Implemented Multiplication (OP_MUL) and Division (OP_DIV) with safety checks.
  * Architect: Rahat Hasan | Akkhar Labs
  */
 
 #include "cpu.h"
+#include "memory.h"
 #include "utils/formatting.h"
 #include <string.h>
 
@@ -26,12 +27,12 @@ void set_flag(CPU *cpu, int flag_bit, int value) {
     }
 }
 
-// নির্দিষ্ট নির্দেশের সাইকেল চালানো (আউটপুট স্ট্রীম সহ)
-void step_cpu(CPU *cpu, uint8_t *memory, FILE *output_stream) {
+// নির্দিষ্ট নির্দেশের সাইকেল চালানো (মেমোরি মডিউল ব্যবহার করে)
+void step_cpu(CPU *cpu, FILE *output_stream) {
     if (cpu->is_halted) return;
 
     // ১. নির্দেশ সংগ্রহ (Fetch)
-    uint16_t instr = memory[cpu->pc] | (memory[cpu->pc + 1] << 8);
+    uint16_t instr = memory_read_word(cpu->pc);
     
     // ২. নির্দেশ বিশ্লেষণ (Decode)
     uint8_t opcode = GET_OPCODE(instr);
@@ -55,6 +56,29 @@ void step_cpu(CPU *cpu, uint8_t *memory, FILE *output_stream) {
             cpu->registers[reg_id] -= cpu->registers[operand];
             set_flag(cpu, FLAG_ZERO, (cpu->registers[reg_id] == 0));
             break;
+
+        case OP_MUL: {
+            // গুণফল ১৬-বিটের বেশি হতে পারে (উপচয় চেক করার জন্য ৩২-বিট ব্যবহার)
+            uint32_t result = (uint32_t)cpu->registers[reg_id] * (uint32_t)cpu->registers[operand];
+            cpu->registers[reg_id] = (uint16_t)(result & 0xFFFF);
+            
+            // ফ্ল্যাগ আপডেট
+            set_flag(cpu, FLAG_ZERO, (cpu->registers[reg_id] == 0));
+            set_flag(cpu, FLAG_OVERFLOW, (result > 0xFFFF));
+            break;
+        }
+
+        case OP_DIV: {
+            // শূন্য দিয়ে ভাগ (Division by Zero) সুরক্ষা
+            if (cpu->registers[operand] == 0) {
+                fprintf(output_stream, "ভুল: শূন্য দিয়ে ভাগ করার চেষ্টা (Division by Zero)!\n");
+                cpu->is_halted = 1;
+            } else {
+                cpu->registers[reg_id] /= cpu->registers[operand];
+                set_flag(cpu, FLAG_ZERO, (cpu->registers[reg_id] == 0));
+            }
+            break;
+        }
 
         case OP_OUT:
             fprintf(output_stream, "[আউটপুট] সাময়িক-");

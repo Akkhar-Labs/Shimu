@@ -1,6 +1,6 @@
 /* 
  * cpu.h - CPU Core State and Instruction Cycle Prototypes
- * Updated: Support for stream-based output and logging.
+ * Updated: Standardized for modular memory and stream-based I/O.
  * Architect: Rahat Hasan | Akkhar Labs
  */
 
@@ -28,8 +28,8 @@ typedef struct {
 // সিপিইউ এবং রেজিস্টারসমূহ প্রাথমিক অবস্থায় (Reset) আনা
 void init_cpu(CPU *cpu);
 
-// একটি পূর্ণ নির্দেশ চক্র চালানো (ফাইল স্ট্রীম বা কনসোলে আউটপুট প্রদানের জন্য)
-void step_cpu(CPU *cpu, uint8_t *memory, FILE *output_stream);
+// একটি পূর্ণ নির্দেশ চক্র চালানো (মেমোরি এখন মডিউল থেকে রিড হবে)
+void step_cpu(CPU *cpu, FILE *output_stream);
 
 // প্রসেসরের বর্তমান অবস্থা নির্দিষ্ট স্ট্রিমে দেখানো
 void dump_cpu_state(CPU *cpu, FILE *output_stream);
